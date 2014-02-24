@@ -168,7 +168,7 @@ class KBucket(object):
 
     def isFresh(self):
         """bucket是否新鲜"""
-        return (time() - self.lastAccessed) > BUCKET_LIFETIME
+        return (time() - self.lastAccessed) < BUCKET_LIFETIME
 
     def inRange(self, target):
         """目标node ID是否在该范围里"""

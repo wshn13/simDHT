@@ -7,7 +7,7 @@ from twisted.internet import reactor
 from twisted.application import internet
 
 from krpc import KRPC
-from utils import entropy, decodeNodes, encodeNodes
+from utils import entropy, decodeNodes, encodeNodes, nodeID
 from ktable import KNode
 from constants import *
 
@@ -25,8 +25,10 @@ class DHTClient(KRPC):
     def __init__(self):
         KRPC.__init__(self)
         self.lastFind = time()
+        self.snid = self.table.nid
         timer(REFRESH_INTERVAL, self.refreshRoutingTable)
         timer(FIND_TIMEOUT, self.rejoinNetwork)
+        timer(10, self.changeNodeID)
 
     def findNode(self, address):
         """
@@ -34,13 +36,12 @@ class DHTClient(KRPC):
         此方法最主要的功能就是不停地让更多人认识自己.
         爬虫只需认识(160-2) * K 个节点即可
         """
-        snid = self.table.nid
         tid = entropy(TID_LENGTH)
         msg = {
             "t": tid,
             "y": "q",
             "q": "find_node",
-            "a": {"id": snid, "target": snid}
+            "a": {"id": self.table.nid, "target": self.snid}
         }
         self.sendQuery(msg, address)
 
@@ -106,9 +107,13 @@ class DHTClient(KRPC):
         """
         防止find_node请求停止而打造. 停止后, 再重新加入DHT网络
         """
-        if ( self.lastFind - time() ) > FIND_TIMEOUT:
+        if ( time() - self.lastFind ) > FIND_TIMEOUT:
             self.joinNetwork()
 
+    def changeNodeID(self):
+        if len(self.table) / ((158 * K)+0.0) >= 0.8:
+            id = nodeID()
+            self.snid = self.table.nid[0:3] + id[3:]
 
 class DHTServer(DHTClient):
     """
