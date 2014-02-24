@@ -3,6 +3,8 @@ from hashlib import sha1
 from random import randint
 from struct import pack, unpack
 
+from exceptions import HashError
+
 def entropy(bytes):
     """随机生成字符串"""
     s = ""
@@ -12,8 +14,10 @@ def entropy(bytes):
 
 def intify(hstr):
     """把20字节的hash值转换为数字"""
-    assert len(hstr) == 20
-    return long(hstr.encode('hex'), 16)
+    if len(hstr) == 20:
+        return long(hstr.encode('hex'), 16)
+    else:
+        raise HashError
 
 def nodeID():
     """生成node ID"""

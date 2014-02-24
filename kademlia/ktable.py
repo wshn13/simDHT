@@ -5,10 +5,7 @@ from bisect import bisect_left
 
 from constants import *
 from utils import intify
-
-class BucketFull(Exception):
-    pass
-
+from exceptions import *
 
 class KTable(object):
     def __init__(self, nid):
@@ -21,7 +18,7 @@ class KTable(object):
         """
         try:
             self.buckets[self.bucketIndex(target)].touch()
-        except IndexError:
+        except (IndexError, HashError):
             pass
 
     def append(self, node):
@@ -29,6 +26,7 @@ class KTable(object):
         插入node
         """
         if self.nid == node.nid: return #不存储自己
+        if len(node.nid) != 20: return
         
         index = self.bucketIndex(node.nid)
         try:
@@ -49,6 +47,7 @@ class KTable(object):
         """
         nodes = []
         if len(self.buckets) == 0: return nodes
+        if len(target) != 20 : return nodes
 
         index = self.bucketIndex(target)
         try:
@@ -69,9 +68,12 @@ class KTable(object):
                 max += 1
 
             #按异或值从小到大排序
-            num = intify(target)
-            nodes.sort(lambda a, b, num=num: cmp(num^intify(a.nid), num^intify(b.nid)))
-            return nodes[:n]
+            try:
+                num = intify(target)
+                nodes.sort(lambda a, b, num=num: cmp(num^intify(a.nid), num^intify(b.nid)))
+                return nodes[:n]
+            except HashError:
+                return []
         except IndexError:
             return nodes
 
@@ -79,7 +81,10 @@ class KTable(object):
         """
         定位指定node ID 或 infohash 所在的bucket的索引
         """
-        return bisect_left(self.buckets, intify(target))
+        try:
+            return bisect_left(self.buckets, intify(target))
+        except HashError:
+            raise HashError
 
     def splitBucket(self, index):
         """
@@ -116,7 +121,7 @@ class KTable(object):
         try:
             index = self.bucketIndex(node.nid)
             return node in self.buckets[index]
-        except IndexError:
+        except (IndexError, HashError):
             return False
 
 
@@ -131,7 +136,6 @@ class KBucket(object):
 
     def append(self, node):
         """添加node"""
-        if len(node.nid) != 20: return
 
         #如果已在该bucket里, 替换掉
         if node in self:
