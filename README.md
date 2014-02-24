@@ -1,12 +1,13 @@
 simDHT:
 ======
 1. 屎上代码最简单的DHT爬虫, 基于twisted/Kademlia, 很适合初学者学习.
-2. 在CPU: 单核 内存:512 带宽: 100Mbps 的国外Xen VPS下, 每二十四小时能收集200万的独一无二的infohash. 若是在最低配置阿里云主机下, 效率更好.
+2. 在CPU: 单核 内存:512 带宽: 100Mbps 的国外Xen VPS下, 每二十四小时能收集200万(运气加理论)的独一无二的infohash. 若是在最低配置阿里云主机下, 效率更好.
+3. 在内网环境下, 也许没效果, 可以的话, 尽量放在公网上, 比如买一个VPS.
 
 
 依赖包:
 ======
-1. [twisted](https://pypi.python.org/pypi/Twisted/13.2.0)
+1. [twisted](https://pypi.python.org/pypi/Twisted/13.2.0), twisted依赖[zope.interface](https://pypi.python.org/pypi/zope.interface/4.1.0)
 2. [bencode](https://pypi.python.org/pypi/bencode/1.0)
 
 
