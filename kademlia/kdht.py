@@ -8,7 +8,7 @@ from twisted.application import internet
 
 from krpc import KRPC
 from utils import entropy, decodeNodes, encodeNodes, nodeID
-from ktable import KNode
+from ktable import KNode, KBucket
 from constants import *
 
 def timer(step, callback, *args):
@@ -25,23 +25,21 @@ class DHTClient(KRPC):
     def __init__(self):
         KRPC.__init__(self)
         self.lastFind = time()
-        self.snid = self.table.nid
-        timer(REFRESH_INTERVAL, self.refreshRoutingTable)
-        timer(FIND_TIMEOUT, self.rejoinNetwork)
-        timer(10, self.changeNodeID)
+        timer(15 * 60, self.rejoinNetwork) #因为KAD每隔15分就要刷新路由表, 我就每隔15分钟更换自身Node ID. 
+        timer(KRPC_TIMEOUT, self.timeout)
 
     def findNode(self, address):
         """
         DHT爬虫的客户端至少要实现find_node.
         此方法最主要的功能就是不停地让更多人认识自己.
-        爬虫只需认识(160-2) * K 个节点即可
         """
         tid = entropy(TID_LENGTH)
+        snid = self.table.nid
         msg = {
             "t": tid,
             "y": "q",
             "q": "find_node",
-            "a": {"id": self.table.nid, "target": self.snid}
+            "a": {"id": snid, "target": snid}
         }
         self.sendQuery(msg, address)
 
@@ -50,14 +48,13 @@ class DHTClient(KRPC):
         处理find_node回应数据
         """
         try:
-            self.table.touchBucket(res["r"]["id"])
-            
             nodes = decodeNodes(res["r"]["nodes"])
             for node in nodes:
                 (nid, ip, port) = node
                 if nid == self.table.nid: continue #不存自己
                 self.table.append(KNode(nid, ip, port))
-                self.lastFind = time() #最后请求时间
+
+                self.lastFind = time()
 
                 #"等待"NEXT_FIND_NODE_INTERVAL时间后, 进行下一个find_node
                 reactor.callLater(NEXT_FIND_NODE_INTERVAL, self.findNode, (ip, port))
@@ -89,31 +86,17 @@ class DHTClient(KRPC):
         """加入DHT网络失败, 再继续加入, 直到加入成功为止"""
         if len(self.table) == 0: self.joinNetwork()
 
-    def refreshRoutingTable(self):
-        """
-        刷新路由表
-
-        遇到不"新鲜"的bucket时, 随机选一个node, 发送find_node
-        """
-        for bucket in self.table:
-            if bucket.isFresh(): continue
-
-            node = bucket.random()
-            if node is None: continue #如果该bucket无node, 继续下一个
-
-            reactor.callLater(NEXT_FIND_NODE_INTERVAL, self.findNode, (node.ip, node.port))
-
     def rejoinNetwork(self):
         """
-        防止find_node请求停止而打造. 停止后, 再重新加入DHT网络
+        更换自身node ID, 清空路由表, 再重新加入DHT网络.
         """
-        if ( time() - self.lastFind ) > FIND_TIMEOUT:
-            self.joinNetwork()
+        self.table.nid = nodeID()
+        self.table.buckets = [ KBucket(0, 2**160) ]
+        self.joinNetwork()
 
-    def changeNodeID(self):
-        if len(self.table) / ((158 * K)+0.0) >= 0.8:
-            id = nodeID()
-            self.snid = self.table.nid[0:3] + id[3:]
+    def timeout(self):
+        if time() - self.lastFind > KRPC_TIMEOUT:
+            self.rejoinNetwork()
 
 class DHTServer(DHTClient):
     """
@@ -206,7 +189,6 @@ class DHTServer(DHTClient):
                 (ip, port) = address
                 port = res["a"]["port"]
                 self.fastbot.downloadTorrent(ip, port, infohash)
-            self.table.touchBucket(nid)
             msg = {
                 "t": res["t"],
                 "y": "r",

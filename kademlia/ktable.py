@@ -12,15 +12,6 @@ class KTable(object):
         self.nid = nid
         self.buckets = [ KBucket(0, 2**160) ]
 
-    def touchBucket(self, target):
-        """
-        更新指定node所在bucket最后访问时间
-        """
-        try:
-            self.buckets[self.bucketIndex(target)].touch()
-        except (IndexError, HashError):
-            pass
-
     def append(self, node):
         """
         插入node
@@ -117,22 +108,14 @@ class KTable(object):
             length += len(bucket)
         return length
 
-    def __contains__(self, node):
-        try:
-            index = self.bucketIndex(node.nid)
-            return node in self.buckets[index]
-        except (IndexError, HashError):
-            return False
-
 
 class KBucket(object):
-    __slots__ = ("min", "max", "nodes", "lastAccessed")
+    __slots__ = ("min", "max", "nodes")
 
     def __init__(self, min, max):
         self.min = min
         self.max = max
         self.nodes = []
-        self.lastAccessed = time()
 
     def append(self, node):
         """添加node"""
@@ -149,26 +132,9 @@ class KBucket(object):
             else:
                 raise BucketFull
 
-        #替换/添加node都要更改bucket最后访问时间
-        self.touch()
-
     def remove(self, node):
         """删除节点"""
         self.nodes.remove(node)
-
-    def touch(self):
-        """更新bucket最后访问时间"""
-        self.lastAccessed = time()
-
-    def random(self):
-        """随机选择一个node"""
-        if len(self.nodes) == 0:
-            return None
-        return self.nodes[randint(0, len(self.nodes)-1)]        
-
-    def isFresh(self):
-        """bucket是否新鲜"""
-        return (time() - self.lastAccessed) < BUCKET_LIFETIME
 
     def inRange(self, target):
         """目标node ID是否在该范围里"""
