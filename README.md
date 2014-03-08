@@ -1,22 +1,22 @@
 simDHT:
 ======
-基于twisted/Kademlia, 代码简单.
+基于tornado/Kademlia而写的高效DHT爬虫.
 
 
 依赖包:
 ======
-1. [twisted](https://pypi.python.org/pypi/Twisted/13.2.0)
+1. [tornado](https://pypi.python.org/pypi/tornado/3.2)
 2. [bencode](https://pypi.python.org/pypi/bencode/1.0)
 
 
-启动*simDHT*服务:
+在Linux启动*simDHT*:
 ================
-`twistd -y simDHT.py`
+`python simDHT.py &`
 
 
-停止*simDHT*服务:
-================
-1. `cat twistd.pid`
+在Linux关闭*simDHT*
+============
+1. `ps aux | grep simDHT.py`
 2. `kill -9 PID`
 
 

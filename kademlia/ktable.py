@@ -16,10 +16,9 @@ class KTable(object):
         """
         插入node
         """
-        if self.nid == node.nid: return #不存储自己
         if len(node.nid) != 20: return
         
-        index = self.bucketIndex(node.nid)
+        index = self.bucket_index(node.nid)
         try:
             bucket = self.buckets[index]
             bucket.append(node)
@@ -27,12 +26,12 @@ class KTable(object):
             return
         except BucketFull:
             #拆表前, 先看看自身node ID是否也在该bucket里, 如果不在, 终止
-            if not bucket.inRange(self.nid): return
+            if not bucket.in_range(self.nid): return
 
-            self.splitBucket(index)
+            self.split_bucket(index)
             self.append(node)
 
-    def findCloseNodes(self, target, n=K):
+    def find_close_nodes(self, target, n=K):
         """
         找出离目标node ID或infohash最近的前n个node
         """
@@ -40,7 +39,7 @@ class KTable(object):
         if len(self.buckets) == 0: return nodes
         if len(target) != 20 : return nodes
 
-        index = self.bucketIndex(target)
+        index = self.bucket_index(target)
         try:
             nodes = self.buckets[index].nodes
             min = index - 1
@@ -68,7 +67,7 @@ class KTable(object):
         except IndexError:
             return nodes
 
-    def bucketIndex(self, target):
+    def bucket_index(self, target):
         """
         定位指定node ID 或 infohash 所在的bucket的索引
         """
@@ -77,7 +76,7 @@ class KTable(object):
         except HashError:
             raise HashError
 
-    def splitBucket(self, index):
+    def split_bucket(self, index):
         """
         拆表
 
@@ -94,7 +93,7 @@ class KTable(object):
         old.max = point
         self.buckets.insert(index + 1, new)
         for node in old.nodes[:]:
-            if new.inRange(node.nid):
+            if new.in_range(node.nid):
                 new.append(node)
                 old.remove(node)
 
@@ -136,7 +135,7 @@ class KBucket(object):
         """删除节点"""
         self.nodes.remove(node)
 
-    def inRange(self, target):
+    def in_range(self, target):
         """目标node ID是否在该范围里"""
         return self.min <= intify(target) < self.max
 
