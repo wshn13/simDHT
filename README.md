@@ -1,6 +1,6 @@
 simDHT:
 ======
-基于tornado/Kademlia而写的高效DHT爬虫.
+基于tornado/Kademlia而写的简单DHT爬虫.
 
 
 依赖包:
