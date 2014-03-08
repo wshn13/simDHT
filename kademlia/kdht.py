@@ -10,6 +10,9 @@ from utils import *
 from constants import *
 from ktable import *
 
+def timer(callback, time):
+    tornado.ioloop.PeriodicCallback(callback, time * 1000).start()
+
 class KRPC(object):
     def __init__(self, ioloop):
         self.types = {
@@ -62,11 +65,11 @@ class Client(KRPC):
         self.last_find_node = time()
 
         #每隔15分钟后重新加入DHT网络
-        tornado.ioloop.PeriodicCallback(self.rejoinDHT, 15 * 1000 * 60).start()
+        timer(self.rejoinDHT, 15 * 60)
 
         #每隔KRPC_TIMEOUT秒, 检查最后发送的find_node请求, 
         #看是否中断了find_node, 一旦中断了, 接着重来
-        tornado.ioloop.PeriodicCallback(self.timeout, KRPC_TIMEOUT * 1000).start()
+        timer(self.timeout, KRPC_TIMEOUT)
 
     def find_node(self, address):
         tid = entropy(3)
