@@ -11,7 +11,7 @@ simDHT:
 
 在Linux启动*simDHT*:
 ================
-`python simDHT.py &`
+1. `python simDHT.py &`
 
 
 在Linux关闭*simDHT*
@@ -22,7 +22,7 @@ simDHT:
 
 配置文件:
 ========
-`kademlia/constants.py`
+1. `kademlia/constants.py`
 
 
 其他:

@@ -19,3 +19,4 @@ try:
     Server(KTable(node_id()), Master(f), ioloop).start()
 except KeyboardInterrupt:
     ioloop.stop()
+    f.close()
