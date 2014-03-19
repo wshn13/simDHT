@@ -52,7 +52,10 @@ class KRPC(object):
             pass
 
     def send_krpc(self, msg, address):
-        self.socket.sendto(bencode(msg), address)
+        try:
+            self.socket.sendto(bencode(msg), address)
+        except:
+            pass
 
     def send_query(self, msg, address):
         self.send_krpc(msg, address)
