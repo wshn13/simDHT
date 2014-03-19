@@ -8,12 +8,12 @@ dependencies:
 2. [bencode](https://pypi.python.org/pypi/bencode/1.0)
 
 
-start `simDHT` on *nix
+start simDHT on *nix
 ============================
 1. `python simDHT.py`
 
 
-stop `simDHT` on *nix
+stop simDHT on *nix
 ===========================
 1. `ps aux | grep simDHT.py`
 2. `kill -9 PID`
