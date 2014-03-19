@@ -5,3 +5,4 @@
 *.pid
 twistd.*
 twistd.*
+*.json
