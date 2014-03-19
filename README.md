@@ -1,6 +1,6 @@
 simDHT:
 ======
-A DHT crawler based on Kademlia/Tornado, written in Python. It's code is very simple
+A DHT crawler based on Kademlia/Tornado, written in Python, the code is very simple.
 
 dependencies:
 ======
@@ -25,4 +25,4 @@ configure file:
 
 note:
 ====
-1. `infohash` is saved in the `infohash.log` file.
+1. `infohash` is saved in the `infohash.log`.
