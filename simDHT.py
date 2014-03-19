@@ -3,7 +3,7 @@ import tornado.ioloop
 
 from kademlia.kdht import Server
 from kademlia.ktable import KTable
-from kademlia.utils import node_id
+from kademlia.utils import random_id
 
 class Master(object):
     def __init__(self, f):
@@ -16,7 +16,7 @@ class Master(object):
 ioloop = tornado.ioloop.IOLoop.instance()
 f = open("infohash.log", "a")
 try:
-    Server(KTable(node_id()), Master(f), ioloop).start()
+    Server(KTable(random_id()), Master(f), ioloop).start()
 except KeyboardInterrupt:
     ioloop.stop()
     f.close()
