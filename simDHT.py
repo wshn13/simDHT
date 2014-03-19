@@ -9,7 +9,7 @@ class Master(object):
     def __init__(self, f):
         self.f = f
 
-    def download_torrent(self, ip, port, infohash):
+    def log(self, ip, port, infohash):
         self.f.write(infohash.encode("hex")+"\n")
         self.f.flush()
 

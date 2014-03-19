@@ -2,22 +2,25 @@
 from time import time
 from hashlib import sha1
 from bencode import bencode, bdecode
+from functools import partial
 import socket
-
+from tornado.ioloop import PeriodicCallback
 import tornado.ioloop
 
 from utils import *
 from constants import *
 from ktable import *
 
+
 def timer(callback, time):
-    tornado.ioloop.PeriodicCallback(callback, time * 1000).start()
+    PeriodicCallback(callback, time * 1000).start()
+
 
 class KRPC(object):
     def __init__(self, ioloop):
         self.types = {
             "r": self.response_received,
-            "q": self.query_received,
+            "q": self.query_received
         }
         self.actions = {
             "ping": self.ping_received,
@@ -35,7 +38,7 @@ class KRPC(object):
         (data, address) = self.socket.recvfrom(65536)
         try:
             res = bdecode(data)
-            self.types[res["y"]](res, address)     
+            self.types[res["y"]](res, address)
         except Exception:
             pass
 
@@ -62,23 +65,21 @@ class Client(KRPC):
     def __init__(self, table, ioloop):
         KRPC.__init__(self, ioloop)
         self.table = table
-        self.last_find_node = time()
+        self.version = "simDHT"
 
-        #每隔15分钟后重新加入DHT网络
-        timer(self.rejoinDHT, 15 * 60)
-
-        #每隔KRPC_TIMEOUT秒, 检查最后发送的find_node请求, 
-        #看是否中断了find_node, 一旦中断了, 接着重来
         timer(self.timeout, KRPC_TIMEOUT)
+        timer(self.reborn, 5 * 60)
 
-    def find_node(self, address):
-        tid = entropy(3)
-        snid = self.table.nid
+    def find_node(self, address, nid=None):
+        nid = self.get_neighbor(nid) if nid else self.table.nid
+        tid = entropy(TID_LENGTH)
+        
         msg = {
+            "v": self.version,
             "t": tid,
             "y": "q",
             "q": "find_node",
-            "a": {"id": snid, "target": snid}
+            "a": {"id": nid, "target": random_id()}
         }
         self.send_query(msg, address)
 
@@ -87,27 +88,29 @@ class Client(KRPC):
             nodes = decode_nodes(res["r"]["nodes"])
             for node in nodes:
                 (nid, ip, port) = node
-                if nid == self.table.nid: continue #不存自己
+                if nid == self.table.nid: continue
+                if len(nid) != 20: continue
                 self.table.append(KNode(nid, ip, port))
-                self.last_find_node = time()
-                self.find_node((ip, port))
+                self.ioloop.add_timeout(time()+0.01, 
+                    partial(self.find_node, (ip, port), nid))                
         except KeyError:
             pass
 
     def joinDHT(self):
         for address in BOOTSTRAP_NODES: self.find_node(address)
 
-    def rejoinDHT(self):
-        self.table.nid = node_id()
-        self.table.buckets = [ KBucket(0, 2**160) ]
-        self.joinDHT()
-
     def timeout(self):
-        if time() - self.last_find_node > KRPC_TIMEOUT: self.joinDHT()
+        if len(self.table.buckets) < 2: self.joinDHT()
+
+    def reborn(self):
+        self.table.buckets = [ KBucket(0, 2 ** 160) ]
 
     def start(self):
         self.joinDHT()
         self.ioloop.start()
+
+    def get_neighbor(self, nid):
+        return nid[:10]+self.table.nid[10:]
 
 
 class Server(Client):
@@ -121,29 +124,25 @@ class Server(Client):
             msg = {
                 "t": res["t"],
                 "y": "r",
-                "r": {"id": self.table.nid}
+                "r": {"id": self.get_neighbor(nid)}
             }
             (ip, port) = address
-            self.table.append(KNode(nid, ip, port))
             self.send_response(msg, address)
         except KeyError:
             pass
 
-
     def find_node_received(self, res, address):
         try:
             target = res["a"]["target"]
-            close_nodes = self.table.find_close_nodes(target, 16)
+            close_nodes = self.table.find_close_nodes(target, 8)
             if not close_nodes: return
-
+            nid = res["a"]["id"]
             msg = {
                 "t": res["t"],
                 "y": "r",
-                "r": {"id": self.table.nid, "nodes": encode_nodes(close_nodes)}
+                "r": {"id": self.get_neighbor(target), "nodes": encode_nodes(close_nodes)}
             }
-            nid = res["a"]["id"]
             (ip, port) = address
-            self.table.append(KNode(nid, ip, port))
             self.send_response(msg, address)
         except KeyError:
             pass
@@ -151,7 +150,7 @@ class Server(Client):
     def get_peers_received(self, res, address):
         try:
             infohash = res["a"]["info_hash"]
-            close_nodes = self.table.find_close_nodes(infohash, 16)
+            close_nodes = self.table.find_close_nodes(infohash, 8)
             if not close_nodes: return
 
             nid = res["a"]["id"]
@@ -161,7 +160,7 @@ class Server(Client):
             msg = {
                 "t": res["t"],
                 "y": "r",
-                "r": {"id": self.table.nid, "nodes": encode_nodes(close_nodes), "token": token}
+                "r": {"id": self.get_neighbor(infohash), "nodes": encode_nodes(close_nodes), "token": token}
             }
             (ip, port) = address
             self.table.append(KNode(nid, ip, port))
@@ -185,12 +184,11 @@ class Server(Client):
                 except (KeyError,ValueError):
                     pass
 
-                #验证token成功, 开始下载种子
-                self.master.download_torrent(ip, port, infohash)
+                self.master.log(ip, port, infohash)
             msg = {
                 "t": res["t"],
                 "y": "r",
-                "r": {"id": self.table.nid}
+                "r": {"id": self.get_neighbor(infohash)}
             }
             self.send_response(msg, address)
         except KeyError:

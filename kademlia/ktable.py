@@ -5,7 +5,10 @@ from bisect import bisect_left
 
 from constants import *
 from utils import intify
-from exceptions import *
+
+class BucketFull(Exception):
+    pass
+
 
 class KTable(object):
     def __init__(self, nid):
@@ -13,11 +16,6 @@ class KTable(object):
         self.buckets = [ KBucket(0, 2**160) ]
 
     def append(self, node):
-        """
-        插入node
-        """
-        if len(node.nid) != 20: return
-        
         index = self.bucket_index(node.nid)
         try:
             bucket = self.buckets[index]
@@ -25,16 +23,12 @@ class KTable(object):
         except IndexError:
             return
         except BucketFull:
-            #拆表前, 先看看自身node ID是否也在该bucket里, 如果不在, 终止
             if not bucket.in_range(self.nid): return
 
             self.split_bucket(index)
             self.append(node)
 
     def find_close_nodes(self, target, n=K):
-        """
-        找出离目标node ID或infohash最近的前n个node
-        """
         nodes = []
         if len(self.buckets) == 0: return nodes
         if len(target) != 20 : return nodes
@@ -46,47 +40,25 @@ class KTable(object):
             max = index + 1
 
             while len(nodes) < n and ((min >= 0) or (max < len(self.buckets))):
-                #如果还能往前走
                 if min >= 0:
                     nodes.extend(self.buckets[min].nodes)
 
-                #如果还能往后走
                 if max < len(self.buckets):
                     nodes.extend(self.buckets[max].nodes)
 
                 min -= 1
                 max += 1
 
-            #按异或值从小到大排序
-            try:
-                num = intify(target)
-                nodes.sort(lambda a, b, num=num: cmp(num^intify(a.nid), num^intify(b.nid)))
-                return nodes[:n]
-            except HashError:
-                return []
+            num = intify(target)
+            nodes.sort(lambda a, b, num=num: cmp(num^intify(a.nid), num^intify(b.nid)))
+            return nodes[:n]
         except IndexError:
             return nodes
 
     def bucket_index(self, target):
-        """
-        定位指定node ID 或 infohash 所在的bucket的索引
-        """
-        try:
-            return bisect_left(self.buckets, intify(target))
-        except HashError:
-            raise HashError
+        return bisect_left(self.buckets, intify(target))
 
     def split_bucket(self, index):
-        """
-        拆表
-
-        index是待拆分的bucket(old bucket)的所在索引值. 
-        假设这个old bucket的min:0, max:16. 拆分该old bucket的话, 分界点是8, 然后把old bucket的max改为8, min还是0. 
-        创建一个新的bucket, new bucket的min=8, max=16.
-        然后根据的old bucket中的各个node的nid, 看看是属于哪个bucket的范围里, 就装到对应的bucket里. 
-        各回各家,各找各妈.
-        new bucket的所在索引值就在old bucket后面, 即index+1, 把新的bucket插入到路由表里.        
-        """
         old = self.buckets[index]
         point = old.max - (old.max - old.min)/2
         new = KBucket(point, old.max)
@@ -117,26 +89,19 @@ class KBucket(object):
         self.nodes = []
 
     def append(self, node):
-        """添加node"""
-
-        #如果已在该bucket里, 替换掉
         if node in self:
             self.remove(node)
             self.nodes.append(node)
         else:
-            #不在该bucket并且未满, 插入
             if len(self) < K:
                 self.nodes.append(node)
-            #满了, 抛出异常, 通知上层代码进行拆表
             else:
                 raise BucketFull
 
     def remove(self, node):
-        """删除节点"""
         self.nodes.remove(node)
 
     def in_range(self, target):
-        """目标node ID是否在该范围里"""
         return self.min <= intify(target) < self.max
 
     def __len__(self):
@@ -150,10 +115,6 @@ class KBucket(object):
             yield node
 
     def __lt__(self, target):
-        """
-        为bisect打造, 目的是快速定位bucket的所在索引, 不需一个个循环.
-        虽然一个路由表最多只能存储158个bucket, 不过追求极限是程序员的美德之一.
-        """
         return self.max <= target
 
 
