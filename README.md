@@ -26,3 +26,4 @@ configure file:
 note:
 ====
 1. `infohash` is saved in the `infohash.log`.
+2. Please on the server running simDHT with a public IP.
