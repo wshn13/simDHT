@@ -26,7 +26,7 @@ configure file:
 UDP "connection" limit using iptables on Linux(example):
 --------------------------------------------------------
 1. `iptables -A INPUT -p udp -m limit --limit 500/s --limit-burst 1000 -j RETURN`
-2. `iptables -A INPUT -P udp -j DROP`
+2. `iptables -A INPUT -p udp -j DROP`
 
 note:
 -----
