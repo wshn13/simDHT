@@ -1,5 +1,4 @@
 #encoding: utf-8
-from hashlib import sha1
 from threading import Timer
 from bencode import bencode, bdecode
 import socket
