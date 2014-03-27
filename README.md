@@ -1,11 +1,10 @@
 simDHT:
 -------
-A DHT crawler based on Kademlia/Tornado, written in Python, the code is very simple.
+A DHT crawler based on Kademlia, written in Python, the code is very simple.
 
 dependencies:
 ------------
-1. [tornado](https://pypi.python.org/pypi/tornado/3.2)
-2. [bencode](https://pypi.python.org/pypi/bencode/1.0)
+1. [bencode](https://pypi.python.org/pypi/bencode/1.0)
 
 
 start simDHT on *nix

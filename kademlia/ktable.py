@@ -28,7 +28,7 @@ class KTable(object):
             self.split_bucket(index)
             self.append(node)
 
-    def find_close_nodes(self, target, n=K):
+    def get_neighbors(self, target):
         nodes = []
         if len(self.buckets) == 0: return nodes
         if len(target) != 20 : return nodes
@@ -39,7 +39,7 @@ class KTable(object):
             min = index - 1
             max = index + 1
 
-            while len(nodes) < n and ((min >= 0) or (max < len(self.buckets))):
+            while len(nodes) < K and ((min >= 0) or (max < len(self.buckets))):
                 if min >= 0:
                     nodes.extend(self.buckets[min].nodes)
 
@@ -51,7 +51,7 @@ class KTable(object):
 
             num = intify(target)
             nodes.sort(lambda a, b, num=num: cmp(num^intify(a.nid), num^intify(b.nid)))
-            return nodes[:n]
+            return nodes[:K]
         except IndexError:
             return nodes
 
@@ -72,12 +72,6 @@ class KTable(object):
     def __iter__(self):
         for bucket in self.buckets:
             yield bucket
-
-    def __len__(self):
-        length = 0
-        for bucket in self:
-            length += len(bucket)
-        return length
 
 
 class KBucket(object):
