@@ -4,5 +4,4 @@
 *.log
 *.pid
 twistd.*
-twistd.*
 *.json
