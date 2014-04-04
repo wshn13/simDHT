@@ -17,11 +17,6 @@ stop simDHT on *nix
 1. `ps aux | grep simDHT.py`
 2. `kill -9 PID`
 
-
-configure file:
----------------
-1. `kademlia/constants.py`
-
 UDP "connection" limit using iptables on Linux(example):
 --------------------------------------------------------
 1. `iptables -A INPUT -p udp -m limit --limit 500/s --limit-burst 1000 -j RETURN`
