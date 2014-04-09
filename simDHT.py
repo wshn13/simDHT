@@ -6,6 +6,7 @@ from struct import unpack, pack
 from socket import inet_aton, inet_ntoa
 from bisect import bisect_left
 from threading import Timer
+from time import sleep
 
 from bencode import bencode, bdecode
 
@@ -15,7 +16,6 @@ BOOTSTRAP_NODES = [
     ("router.utorrent.com", 6881)
 ] 
 TID_LENGTH = 4
-DHT_PORT = 6881
 KRPC_TIMEOUT = 10
 REBORN_TIME = 5 * 60
 K = 8
@@ -76,7 +76,7 @@ class KRPC(object):
         }
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(("0.0.0.0", DHT_PORT))
+        self.socket.bind(("0.0.0.0", self.port))
 
     def response_received(self, msg, address):
         self.find_node_handler(msg)
@@ -97,6 +97,7 @@ class KRPC(object):
 class Client(KRPC):
     def __init__(self, table):
         self.table = table
+
         timer(KRPC_TIMEOUT, self.timeout)
         timer(REBORN_TIME, self.reborn)
         KRPC.__init__(self)
@@ -120,8 +121,6 @@ class Client(KRPC):
                 (nid, ip, port) = node
                 if len(nid) != 20: continue
                 if nid == self.table.nid: continue
-
-                self.table.append(KNode(nid, ip, port))
                 self.find_node( (ip, port), nid )
         except KeyError:
             pass
@@ -156,9 +155,10 @@ class Client(KRPC):
 
 
 class Server(Client):
-    def __init__(self, master, table):
+    def __init__(self, master, table, port):
         self.table = table
         self.master = master
+        self.port = port
         Client.__init__(self, table)
 
     def ping_received(self, msg, address):
@@ -170,6 +170,7 @@ class Server(Client):
                 "r": {"id": self.get_neighbor(nid)}
             }
             self.send_krpc(msg, address)
+            self.find_node(address, nid)
         except KeyError:
             pass
 
@@ -189,12 +190,14 @@ class Server(Client):
             }
             self.table.append(KNode(nid, *address))
             self.send_krpc(msg, address)
+            self.find_node(address, nid)
         except KeyError:
             pass
 
     def get_peers_received(self, msg, address):
         try:
             infohash = msg["a"]["info_hash"]
+
             neighbors = self.table.get_neighbors(infohash)
 
             nid = msg["a"]["id"]
@@ -209,14 +212,16 @@ class Server(Client):
             self.table.append(KNode(nid, *address))
             self.send_krpc(msg, address)
             self.master.log(infohash)
+            self.find_node(address, nid)
         except KeyError:
             pass
 
     def announce_peer_received(self, msg, address):
         try:
             infohash = msg["a"]["info_hash"]
+            nid = msg["a"]["id"]
 
-            msg = {
+            msg = { 
                 "t": msg["t"],
                 "y": "r",
                 "r": {"id": self.get_neighbor(infohash)}
@@ -225,9 +230,9 @@ class Server(Client):
             self.table.append(KNode(nid, *address))
             self.send_krpc(msg, address)
             self.master.log(infohash)
+            self.find_node(address, nid)
         except KeyError:
             pass
-
 
 class KTable(object):
     def __init__(self, nid):
@@ -341,6 +346,7 @@ class KNode(object):
 
     def __eq__(self, other):
         return self.nid == other.nid
+
 
 
 #using example
