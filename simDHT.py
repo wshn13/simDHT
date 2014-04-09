@@ -360,7 +360,7 @@ class Master(object):
 try:
     f = open("infohash.log", "a")
     m = Master(f)
-    s = Server(Master(f), KTable(random_id()))
+    s = Server(Master(f), KTable(random_id()), 8001)
     s.start()     
 except KeyboardInterrupt:
     s.socket.close()
